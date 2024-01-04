@@ -1,0 +1,72 @@
+---
+title:  "AI policies: a document analysis"
+date:  today
+
+format: 
+  dashboard:
+    fig-format: "svg"
+    logo: images/Rfun3.png
+    nav-buttons: [github]
+    theme: 
+      - sandstone #spacelab #sandstone 
+      # - styles/custom.scss
+    background: primary
+
+editor: source
+---
+
+# Main
+
+## Row 1 {height=60%}
+
+### Column 1
+
+![](output_images/bigrams.svg){fig-alt="bigrams tf-idf"}
+
+### Column 2
+
+![](output_images/lines_of_text.svg){fig-alt="Lines of text per document"}
+
+## Row 2
+
+### Column 1
+
+::: {.card title="n-grams & TF-IDF"}
+
+**N-grams** are a contiguous sequence of n items from a given sample of text or speech. The items can be phonemes, syllables, letters, words or base pairs according to the application. 
+
+**TF-IDF** is a numerical statistic that is intended to reflect how important a word is to a document in a collection or corpus. It is often used as a weighting factor in searches of information retrieval, text mining, and user modeling. The tf-idf value increases proportionally to the number of times a word appears in the document and is offset by the number of documents in the corpus that contain the word, which helps to adjust for the fact that some words appear more frequently in general.
+
+:::
+
+### Column 2
+
+::: {.card title="Document sources"}
+
+-   [DLI Guidance on Use of AI](https://learninginnovation.duke.edu/ai-and-teaching-at-duke-2/artificial-intelligence-policies-in-syllabi-guidelines-and-considerations/) 
+-   [Duke School of Medicine- Program Policies ](https://medicine.bulletins.duke.edu/allprograms/dr/md#policies1)(Policies and subsections)
+-   [DKU Guide for Teaching and Generative AI](https://www.dukekunshan.edu.cn/center-for-teaching-and-learning/faculty-resource-guide-teaching-with-ai/)
+
+:::
+
+# Word frequencies
+
+## Row 1
+
+### Column 1
+
+![](output_images/most_common_words.svg){fig-alt="Word frequencies.  All documents"}
+
+### column 2
+
+![](output_images/most_common_words_by_title.svg){fig-alt="Word frequencies.  By document"}
+
+## Row 2
+
+### Column 1
+
+![](output_images/wordcloud.svg){fig-alt="Wordcloud"}
+
+### Column 2
+
+![](output_images/tf_idf.svg){fig-alt="TF-IDF"}

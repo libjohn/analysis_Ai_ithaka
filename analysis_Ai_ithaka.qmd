@@ -34,6 +34,8 @@ my_corpus_filenames <- fs::dir_ls("data", glob = "*.txt")
 my_corpus_filenames
 
 data(stop_words)
+
+fs::dir_create("output_images")
 ```
 
 ```{r}
@@ -127,13 +129,16 @@ corpus_df |>
   geom_col(show.legend = FALSE) +
   coord_flip() +
   scale_fill_brewer(palette = "Dark2") +
-  facet_wrap(vars(str_wrap(title, width = 25)), scales = "free") +
-  labs(title = "Bigrams with the highest TF-IDF by document title",
-       x = NULL) +
+  facet_wrap(vars(str_wrap(title, width = 20)), scales = "free") +
+  labs(title = "Bigrams TF-IDF rank by document title",
+       x = NULL,
+       caption = "Duke Libraries' Center for Data & Visualization Sciences") +
   theme_minimal() +
   theme(text = element_text(size = 15),
         plot.title.position = "plot",
         axis.text.y = element_text(hjust = 0))
+
+ggsave("output_images/bigrams.svg", width = 16, height = 9, units = "in")
 ```
 
 ### tf-idf
@@ -157,13 +162,15 @@ corpus_df |>
   scale_fill_brewer(palette = "Dark2") +
   facet_wrap(vars(str_wrap(title, width = 25)), scales = "free") +
   labs(x = NULL, y = "tf-idf",
-       title = "Term frequency - Inverse document frequency") +
+       title = "Term frequency - Inverse document frequency",
+       caption = "Duke Libraries' Center for Data & Visualization Sciences") +
   coord_flip() +
   theme_minimal() +
-  theme(text = element_text(size = 15),
+  theme(text = element_text(size = 10),
         plot.title.position = "plot",
         axis.text.y = element_text(hjust = 0))
 
+ggsave("output_images/tf_idf.svg", width = 8, height = 4.5, units = "in")
 ```
 
 ## Viz
@@ -177,12 +184,15 @@ corpus_df |>
   geom_text(aes(label = lines), hjust = 0, nudge_x = -8, 
             color = "ivory", size = 9) +
   scale_fill_brewer(palette = "Dark2") +
-  labs(y = NULL,
-       title = "Lines of text per document") +
+  labs(y = NULL, x = NULL,
+       title = "Lines of text per document",
+       caption = "Duke Libraries' Center for Data & Visualization Sciences") +
   theme_minimal() +
   theme(text = element_text(size = 15),
         plot.title.position = "plot",
         axis.text.y = element_text(hjust = 0))
+
+ggsave("output_images/lines_of_text.svg", width = 16, height = 9, units = "in")
 ```
 
 ```{r}
@@ -193,12 +203,17 @@ cleaned_text |>
   ggplot(aes(n, word)) +
   geom_col() +
   labs(y = NULL, 
-       title = "Most common words: all documents") +
+       title = "Most common words: all documents",
+       caption = "Duke Libraries' Center for Data & Visualization Sciences") +
   theme_minimal() +
   theme(text = element_text(size = 15),
         plot.title.position = "plot",
         axis.text.y = element_text(hjust = 0))
 
+ggsave("output_images/most_common_words.svg", width = 8, height = 4.5, units = "in")
+```
+
+```{r}
 cleaned_text |> 
   count(title, word, sort = TRUE) |> 
   slice_max(n, prop = .026, by = title) |> 
@@ -211,13 +226,14 @@ cleaned_text |>
   scale_x_reordered() +
   scale_fill_brewer(palette = "Dark2") +
   labs(x = NULL, y = NULL,
-       title = "Most common words") + 
+       title = "Most common words",
+       caption = "Duke Libraries' Center for Data & Visualization Sciences") + 
   theme_minimal()  +
-  theme(text = element_text(size = 15),
+  theme(text = element_text(size = 10),
         plot.title.position = "plot",
         axis.text.y = element_text(hjust = 0))
 
-
+ggsave("output_images/most_common_words_by_title.svg", width = 8, height = 4.5, units = "in")
 ```
 
 ```{r}
