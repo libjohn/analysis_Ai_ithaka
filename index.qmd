@@ -9,13 +9,12 @@ format:
     nav-buttons: [github]
     theme: 
       - sandstone #spacelab #sandstone 
-      # - styles/custom.scss
     background: primary
 
 editor: source
 ---
 
-# Main
+# Home
 
 ## Row 1 {height=60%}
 
@@ -65,7 +64,7 @@ editor: source
 
 ### Column 1
 
-![](output_images/wordcloud.svg){fig-alt="Wordcloud"}
+![](output_images/wordcloud.png){fig-alt="Wordcloud"}
 
 ### Column 2
 
