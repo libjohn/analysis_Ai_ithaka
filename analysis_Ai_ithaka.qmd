@@ -1,0 +1,228 @@
+---
+title: "analysis_Ai_ithaka"
+---
+
+## Documents to analyze
+
+From the [*Document Analysis*](https://docs.google.com/document/d/18WzJT4rTNBr30NI0g5mFTWf4glC9YPHmcryJdUJkvBo/edit) document, we have agree to look for patterns within the following corpus
+
+-   [~~Duke Community Standard~~](https://students.duke.edu/wp-content/uploads/2023/10/DCS-Guide-2023-2024.pdf-1.pdf)~~: Duke Chronicle, September 24, 2023 - Xinzhu ; John~~
+
+    -   This document is eliminated because there is only one brief mention of *artificial intelligence* within the nearly 70 page document. The reference is included with respect to cheating.
+
+-   [DLI Guidance on Use of AI](https://learninginnovation.duke.edu/ai-and-teaching-at-duke-2/artificial-intelligence-policies-in-syllabi-guidelines-and-considerations/) - John ; Xinzhu
+
+-   [Duke School of Medicine- Program Policies ](https://medicine.bulletins.duke.edu/allprograms/dr/md#policies1)(Policies and subsections) - Linda
+
+-   [DKU Guide for Teaching and Generative AI](https://www.dukekunshan.edu.cn/center-for-teaching-and-learning/faculty-resource-guide-teaching-with-ai/) - Xinzhu, Linda
+
+## Library Packages
+
+```{r}
+#| label: packages
+#| warning: false
+#| message: false
+library(tidyverse)
+library(tidytext)
+library(fs)
+```
+
+## Import data
+
+```{r}
+my_corpus_filenames <- fs::dir_ls("data", glob = "*.txt")
+my_corpus_filenames
+
+data(stop_words)
+```
+
+```{r}
+corpus_df <- tibble(file = my_corpus_filenames,
+       id = fs::path_file(my_corpus_filenames)) |> 
+  mutate(text = map(file, read_lines, skip_empty_rows = TRUE)) |> 
+  unnest(text) |> 
+  # filter(str_detect(text, regex("dall", ignore_case = TRUE)))
+  # mutate(text = str_replace_all(text, "DALL", "DALLE")) |>
+  # mutate(text = str_replace_all(text, "E2", "")) |>
+    # mutate(word = str_replace_all(word, "dalle2", "dall")) |>
+    # mutate(word = str_replace_all(word, "dall", "dalle")) |>
+  mutate(title = str_extract(text, "(?<=^Title: ).*"), .after = id) |> 
+  fill(title, .direction = "down") |>
+  filter(str_detect(text, "Source: https://", negate = TRUE)) |> 
+  filter(str_detect(text, "Download Date: \\w+ \\d{1,2}, \\d{4}", negate = TRUE)) |> 
+  filter(str_detect(text, "^Title: ", negate = TRUE)) |> 
+  select(id, title, text)
+
+corpus_df
+```
+
+```{r}
+cleaned_text <- corpus_df |>
+  unnest_tokens(word, text) |> 
+  mutate(word = str_replace_all(word, "dalle2", "dall")) |>
+  mutate(word = str_replace_all(word, "dall", "dalle")) |>
+  anti_join(stop_words) 
+
+cleaned_text
+```
+
+
+```{r}
+bi_grams <- corpus_df |> 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) |> 
+  separate_wider_delim(bigram, names =c("word1", "word2"), delim = " ", cols_remove = FALSE) |> 
+  filter(!word1 %in% stop_words$word) |> 
+  filter(!word2 %in% stop_words$word) |> 
+  count(word1, word2, sort = TRUE) |> 
+  filter(n > 3) 
+
+bi_grams
+
+# corpus_df |> 
+#   unnest_tokens(bigram, text, token = "ngrams", n = 2) |> 
+#   separate_wider_delim(bigram, names =c("word1", "word2"), delim = " ", cols_remove = FALSE) |> 
+#   filter(!word1 %in% stop_words$word) |> 
+#   filter(!word2 %in% stop_words$word) |> 
+#   count(title, word1, word2, sort = TRUE) |> 
+#   filter(n > 3) |> 
+#   arrange(title, desc(n))
+
+
+
+tri_grams <- corpus_df |> 
+  unnest_tokens(trigram, text, token = "ngrams", n = 3) |> 
+  separate_wider_delim(trigram, names = c("word1", "word2", "word3"), delim = " ", cols_remove = FALSE) |> 
+  filter(!word1 %in% stop_words$word) |> 
+  filter(!word2 %in% stop_words$word) |> 
+  filter(!word3 %in% stop_words$word) |> 
+  count(word1, word2, word3, sort = TRUE) |> 
+  drop_na() |> 
+  filter(n > 3) 
+
+tri_grams
+
+# corpus_df |> 
+#   unnest_tokens(trigram, text, token = "ngrams", n = 3) |> 
+#   separate_wider_delim(trigram, names = c("word1", "word2", "word3"), delim = " ", cols_remove = FALSE) |> 
+#   filter(!word1 %in% stop_words$word) |> 
+#   filter(!word2 %in% stop_words$word) |> 
+#   filter(!word3 %in% stop_words$word) |> 
+#   count(title, word1, word2, word3, sort = TRUE) |> 
+#   drop_na() |> 
+#   filter(n > 3)  |> 
+#   arrange(title, desc(n))
+
+corpus_df |> 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) |> 
+  separate_wider_delim(bigram, names =c("word1", "word2"), delim = " ", cols_remove = FALSE) |> 
+  filter(!word1 %in% stop_words$word) |> 
+  filter(!word2 %in% stop_words$word) |> 
+  count(title, bigram) |> 
+  bind_tf_idf(bigram, title, n) |> 
+  arrange(desc(tf_idf)) |>
+  group_by(title) |> 
+  top_n(10) |> 
+  ungroup() |>
+  ggplot(aes(reorder(bigram, tf_idf), tf_idf, fill = title)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_brewer(palette = "Dark2") +
+  facet_wrap(vars(str_wrap(title, width = 25)), scales = "free") +
+  labs(title = "Bigrams with the highest TF-IDF by document title",
+       x = NULL) +
+  theme_minimal() +
+  theme(text = element_text(size = 15),
+        plot.title.position = "plot",
+        axis.text.y = element_text(hjust = 0))
+```
+
+### tf-idf
+
+A heuristic to determine the importance of a word in a document. 
+
+```{r}
+corpus_df |> 
+  unnest_tokens(word, text) |> 
+  mutate(word = str_replace_all(word, "dalle2", "dall")) |>
+  mutate(word = str_replace_all(word, "dall", "dalle")) |>
+  anti_join(stop_words) |> 
+  count(title, word) |> 
+  bind_tf_idf(word, title, n) |> 
+  arrange(desc(tf_idf)) |> 
+  group_by(title) |> 
+  top_n(10) |> 
+  ungroup() |> 
+  ggplot(aes(reorder(word, tf_idf), tf_idf, fill = title)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_brewer(palette = "Dark2") +
+  facet_wrap(vars(str_wrap(title, width = 25)), scales = "free") +
+  labs(x = NULL, y = "tf-idf",
+       title = "Term frequency - Inverse document frequency") +
+  coord_flip() +
+  theme_minimal() +
+  theme(text = element_text(size = 15),
+        plot.title.position = "plot",
+        axis.text.y = element_text(hjust = 0))
+
+```
+
+## Viz
+
+```{r}
+corpus_df |> 
+  mutate(lines = max(row_number()), .by = title) |> 
+  distinct(title, lines) |>
+  ggplot(aes(lines, reorder(str_wrap(title, width = 30), lines))) +
+  geom_col(aes(fill = title), show.legend = FALSE) +
+  geom_text(aes(label = lines), hjust = 0, nudge_x = -8, 
+            color = "ivory", size = 9) +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(y = NULL,
+       title = "Lines of text per document") +
+  theme_minimal() +
+  theme(text = element_text(size = 15),
+        plot.title.position = "plot",
+        axis.text.y = element_text(hjust = 0))
+```
+
+```{r}
+cleaned_text |> 
+  count(word, sort = TRUE) |> 
+  filter(n > 10) |> 
+  mutate(word = reorder(word, n)) |> 
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL, 
+       title = "Most common words: all documents") +
+  theme_minimal() +
+  theme(text = element_text(size = 15),
+        plot.title.position = "plot",
+        axis.text.y = element_text(hjust = 0))
+
+cleaned_text |> 
+  count(title, word, sort = TRUE) |> 
+  slice_max(n, prop = .026, by = title) |> 
+  mutate(title = as.factor(title),
+         word_fct = reorder_within(word, n, title)) |>
+  ggplot(aes(word_fct, n, fill = title)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(vars(str_wrap(title, width = 25)), scales = "free_y") +
+  coord_flip() +
+  scale_x_reordered() +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(x = NULL, y = NULL,
+       title = "Most common words") + 
+  theme_minimal()  +
+  theme(text = element_text(size = 15),
+        plot.title.position = "plot",
+        axis.text.y = element_text(hjust = 0))
+
+
+```
+
+```{r}
+cleaned_text |> 
+  count(word, sort = TRUE) |> 
+  with(wordcloud::wordcloud(word, n, max.words = 100))
+```
+
