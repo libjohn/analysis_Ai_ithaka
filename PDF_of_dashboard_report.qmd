@@ -1,0 +1,273 @@
+---
+title: "AI Policies: a quantitiative document analysis"
+subtitle: "Companion to a dashboard presentation"
+author: "John Little"
+date: today
+format: pdf
+bibliography: references.bib
+---
+
+```{r}
+#| label: packages
+#| warning: false
+#| message: false
+#| echo: false
+library(tidyverse)
+library(tidytext)
+library(fs)
+library(ggwordcloud)
+
+# import data
+my_corpus_filenames <- fs::dir_ls("data", glob = "*.txt")
+
+data(stop_words)
+
+fs::dir_create("output_images")
+
+# 
+corpus_df <- tibble(file = my_corpus_filenames,
+       id = fs::path_file(my_corpus_filenames)) |> 
+  mutate(text = map(file, read_lines, skip_empty_rows = TRUE)) |> 
+  unnest(text) |> 
+  # filter(str_detect(text, regex("dall", ignore_case = TRUE)))
+  # mutate(text = str_replace_all(text, "DALL", "DALLE")) |>
+  # mutate(text = str_replace_all(text, "E2", "")) |>
+    # mutate(word = str_replace_all(word, "dalle2", "dall")) |>
+    # mutate(word = str_replace_all(word, "dall", "dalle")) |>
+  mutate(title = str_extract(text, "(?<=^Title: ).*"), .after = id) |> 
+  fill(title, .direction = "down") |>
+  filter(str_detect(text, "Source: https://", negate = TRUE)) |> 
+  filter(str_detect(text, "Download Date: \\w+ \\d{1,2}, \\d{4}", negate = TRUE)) |> 
+  filter(str_detect(text, "^Title: ", negate = TRUE)) |> 
+  select(id, title, text)
+
+cleaned_text <- corpus_df |>
+  unnest_tokens(word, text) |> 
+  mutate(word = str_replace_all(word, "dalle2", "dall")) |>
+  mutate(word = str_replace_all(word, "dall", "dalle")) |>
+  anti_join(stop_words) 
+
+bi_grams <- corpus_df |> 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) |> 
+  separate_wider_delim(bigram, names =c("word1", "word2"), delim = " ", cols_remove = FALSE) |> 
+  filter(!word1 %in% stop_words$word) |> 
+  filter(!word2 %in% stop_words$word) |> 
+  count(word1, word2, sort = TRUE) |> 
+  filter(n > 3) 
+
+tri_grams <- corpus_df |> 
+  unnest_tokens(trigram, text, token = "ngrams", n = 3) |> 
+  separate_wider_delim(trigram, names = c("word1", "word2", "word3"), delim = " ", cols_remove = FALSE) |> 
+  filter(!word1 %in% stop_words$word) |> 
+  filter(!word2 %in% stop_words$word) |> 
+  filter(!word3 %in% stop_words$word) |> 
+  count(word1, word2, word3, sort = TRUE) |> 
+  drop_na() |> 
+  filter(n > 3) 
+```
+
+Ithaka S+ R convened a two-year research project in March of 2023.[@cooper2023] Yakut Gazi (PI, DLI) and Joe Salem (Library) are chairing a local cohort[^1] charged with conducting the survey protocol centered around a *qualitative inquiry* protocol. An early phase of year one conducted interviews with local university officials involved in the intersection of research, AI, and policy at Duke.
+
+[^1]: Linda Daniel; John Little; Greay Reavis; Xinzhu Wang
+
+An additional phase of year one, before on-site interviews are conducted, includes the qualitative analysis of three policy documents.
+
+1.  *DKU Guide for Teaching and Generative AI*.[@dukekunshanuniversity2023]
+2.  *Artificial Intelligence Policies: Guidelines and Considerations.*[@duke2023]
+3.  Guidance for the use of Artificial Intelligence Tools for Academic Assignments in MD Program.[@bulletin]
+
+The documents were qualitatively assessed according to and classified per an apriori taxonomy. Additionally, the documents were quantitatively assessed to highlight topical descriptions according to the dual standard text-mining algorithm of word frequency and Term-Frequency-Inverse Document Frequency (TF-IDF) of single words and bi-grams. The visualization of quantitative text-mining analysis are included below. Code for the analysis can be found on GitHub.[@little2024]
+
+## Definitions
+
+**N-grams**
+
+:   A contiguous sequence of n items from a given sample of text or speech. The items can be phonemes, syllables, letters, words, or base pairs according to the application.
+
+**TF-IDF**
+
+:   A numerical statistic intended to reflect how important a word is to a document in a collection or corpus. It is often used as a weighting factor in searches for information retrieval, text mining, and user modeling. The TF-IDF value increases proportionally to the number of times a word appears in the document and is offset by the number of documents in the corpus that contain the word, which helps to adjust for the fact that some words appear more frequently in general.
+
+ 
+
+## Bi-grams TF-IDF rank by document title
+
+```{r}
+#| label: bi-grams-tf-idf
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-width: 9
+#| fig-height: 8
+
+corpus_df |> 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) |> 
+  separate_wider_delim(bigram, names =c("word1", "word2"), delim = " ", cols_remove = FALSE) |> 
+  filter(!word1 %in% stop_words$word) |> 
+  filter(!word2 %in% stop_words$word) |> 
+  count(title, bigram) |> 
+  bind_tf_idf(bigram, title, n) |> 
+  arrange(desc(tf_idf)) |>
+  group_by(title) |> 
+  top_n(10) |> 
+  ungroup() |>
+  ggplot(aes(reorder(bigram, tf_idf), tf_idf, fill = title)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  scale_fill_brewer(palette = "Dark2") +
+  facet_wrap(vars(title), 
+             scales = "free_y",
+             ncol = 1) +
+  labs(title = "Bigrams TF-IDF rank by document title",
+       x = NULL,
+       caption = "Duke Libraries' Center for Data & Visualization Sciences") +
+  theme_minimal() +
+  theme(text = element_text(size = 15),
+        plot.title.position = "plot",
+        axis.text.y = element_text(hjust = 0))
+```
+
+## Lines of text per document
+
+```{r}
+#| label: text-length-lines
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-width: 9
+#| fig-height: 4.6
+
+corpus_df |> 
+  mutate(lines = max(row_number()), .by = title) |> 
+  distinct(title, lines) |>
+  ggplot(aes(lines, reorder(str_wrap(title, width = 30), lines))) +
+  geom_col(aes(fill = title), show.legend = FALSE) +
+  geom_text(aes(label = lines), hjust = 0, nudge_x = -8, 
+            color = "ivory", size = 9) +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(y = NULL, x = NULL,
+       title = "Lines of text per document",
+       caption = "Duke Libraries' Center for Data & Visualization Sciences") +
+  theme_minimal() +
+  theme(text = element_text(size = 15),
+        plot.title.position = "plot",
+        axis.text.y = element_text(hjust = 0))
+```
+
+## Word frequency of all words across all documents in the corpus
+
+```{r}
+#| label: word-freq-each-doc-corpus
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-width: 9
+#| fig-height: 4.6
+
+
+cleaned_text |> 
+  count(word, sort = TRUE) |> 
+  filter(n > 10) |> 
+  mutate(word = reorder(word, n)) |> 
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL, 
+       title = "Most common words: all documents",
+       caption = "Duke Libraries' Center for Data & Visualization Sciences") +
+  theme_minimal() +
+  theme(text = element_text(size = 15),
+        plot.title.position = "plot",
+        axis.text.y = element_text(hjust = 0))
+```
+
+## The most common words in each document
+
+```{r}
+#| label: word-freq-each-doc
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-width: 9
+#| fig-height: 8
+
+
+corpus_df |> 
+  unnest_tokens(word, text) |> 
+  mutate(word = str_replace_all(word, "dalle2", "dall")) |>
+  mutate(word = str_replace_all(word, "dall", "dalle")) |>
+  anti_join(stop_words) |> 
+  count(title, word) |> 
+  bind_tf_idf(word, title, n) |> 
+  arrange(desc(tf_idf)) |> 
+  group_by(title) |> 
+  top_n(10) |> 
+  ungroup() |> 
+  ggplot(aes(reorder(word, tf_idf), tf_idf, fill = title)) +
+  geom_col(show.legend = FALSE) +
+  scale_fill_brewer(palette = "Dark2") +
+  facet_wrap(vars(title), scales = "free_y", ncol = 1) +
+  labs(x = NULL, y = "tf-idf",
+       title = "Term frequency - Inverse document frequency",
+       caption = "Duke Libraries' Center for Data & Visualization Sciences") +
+  coord_flip() +
+  theme_minimal() +
+  theme(text = element_text(size = 10),
+        plot.title.position = "plot",
+        axis.text.y = element_text(hjust = 0))
+```
+
+## Term-Frequency - Inverse Document Frequency (TF-IDF) of each document
+
+```{r}
+#| label: tf-idf-single-words
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-width: 9
+#| fig-height: 8
+
+cleaned_text |> 
+  count(title, word, sort = TRUE) |> 
+  slice_max(n, prop = .026, by = title) |> 
+  mutate(title = as.factor(title),
+         word_fct = reorder_within(word, n, title)) |>
+  ggplot(aes(word_fct, n, fill = title)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(vars(title), 
+             scales = "free_y",
+             ncol = 1) +
+  coord_flip() +
+  scale_x_reordered() +
+  scale_fill_brewer(palette = "Dark2") +
+  labs(x = NULL, y = NULL,
+       title = "Most common words",
+       caption = "Duke Libraries' Center for Data & Visualization Sciences") + 
+  theme_minimal()  +
+  theme(text = element_text(size = 10),
+        plot.title.position = "plot",
+        axis.text.y = element_text(hjust = 0))       
+           
+```
+
+## Word Cloud
+
+```{r}
+#| label: wordcloud
+#| echo: false
+#| warning: false
+#| message: false
+#| fig-width: 8
+#| fig-height: 10.5
+
+set.seed(2024)
+cleaned_text |> 
+  count(word, sort = TRUE) |> 
+  slice_max(n = 60, order_by = n) |> 
+  ggplot(aes(label = word, size = n)) +
+  geom_text_wordcloud() +
+  scale_size_area(max_size = 40) +
+  theme_minimal()
+
+```
+
+------------------------------------------------------------------------
