@@ -66,17 +66,17 @@ tri_grams <- corpus_df |>
   filter(n > 3) 
 ```
 
-Ithaka S+ R convened a two-year research project in March of 2023.[@cooper2023] Yakut Gazi (PI, DLI) and Joe Salem (Library) are chairing a local cohort[^1] charged with conducting the survey protocol centered around a *qualitative inquiry* protocol. An early phase of year one conducted interviews with local university officials involved in the intersection of research, AI, and policy at Duke.
+Ithaka S+ R convened a two-year research project in March of 2023.[@cooper2023] Yakut Gazi (PI, DLI) and Joe Salem (Library) are chairing a local cohort[^1] charged with conducting the survey centered around a *qualitative inquiry* protocol. An early phase of year-one will conduct interviews with a subset of local university personnel involved in research, AI, and policy at Duke.
 
 [^1]: Linda Daniel; John Little; Greay Reavis; Xinzhu Wang
 
-An additional phase of year one, before on-site interviews are conducted, includes the qualitative analysis of three policy documents.
+An additional phase of year-one, before on-site interviews are conducted, includes the qualitative analysis of the following policy documents with the possibility of a larger corpus.
 
 1.  *DKU Guide for Teaching and Generative AI*.[@dukekunshanuniversity2023]
 2.  *Artificial Intelligence Policies: Guidelines and Considerations.*[@duke2023]
 3.  Guidance for the use of Artificial Intelligence Tools for Academic Assignments in MD Program.[@bulletin]
 
-The documents were qualitatively assessed according to and classified per an apriori taxonomy. Additionally, the documents were quantitatively assessed to highlight topical descriptions according to the dual standard text-mining algorithm of word frequency and Term-Frequency-Inverse Document Frequency (TF-IDF) of single words and bi-grams. The visualization of quantitative text-mining analysis are included below. Code for the analysis can be found on GitHub.[@little2024]
+The documents were qualitatively assessed and classified per an a priori taxonomy. Additionally, the documents were quantitatively assessed vis-a-via the standard text-mining algorithms: *word frequency*, and *Term-Frequency-Inverse Document Frequency* (TF-IDF) of single-words and bi-grams. The visualizations of quantitative text-mining analysis are included below. The code for the analysis can be found on GitHub.[@little2024]
 
 ## Definitions
 
